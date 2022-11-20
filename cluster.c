@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <math.h> // sqrtf
 #include <limits.h> // INT_MAX
+#include<string.h> 
 
 /*****************************************************************
  * Ladici makra. Vypnout jejich efekt lze definici makra
@@ -82,8 +83,9 @@ void init_cluster(struct cluster_t *c, int cap)
     assert(c != NULL);
     assert(cap >= 0);
 
-    // TODO
-
+    c->size=0;
+    c->capacity=0;
+    c->obj=NULL;
 }
 
 /*
@@ -91,7 +93,11 @@ void init_cluster(struct cluster_t *c, int cap)
  */
 void clear_cluster(struct cluster_t *c)
 {
-    // TODO
+    if (c->capacity)
+    free(c->obj);
+    c->obj=NULL;
+    c->size=0;
+    c->capacity=0;
 }
 
 /// Chunk of cluster objects. Value recommended for reallocation.
@@ -235,6 +241,33 @@ void print_cluster(struct cluster_t *c)
     putchar('\n');
 }
 
+int get_count(FILE*fpointer)
+{
+    char first_line[150]={0};
+    fgets(first_line,150,fpointer);
+
+    char amount_of_clusters[0]={};
+
+    for(int i=6;i<strlen(first_line);i++)
+    {
+        amount_of_clusters[i - 6]=first_line[i];
+    }     
+    int count = atoi(amount_of_clusters);
+    return count;
+}
+
+int get_section(int* index,char* line)
+{
+    int i=0;
+    char data[4]={0};
+    while (line[*index] != ' ' && line[*index] != '\n')
+    {
+        data[i++] = line[*index];
+        (*index)++;
+    }
+    return atoi(data);
+}
+
 /*
  Ze souboru 'filename' nacte objekty. Pro kazdy objekt vytvori shluk a ulozi
  jej do pole shluku. Alokuje prostor pro pole vsech shluku a ukazatel na prvni
@@ -245,8 +278,33 @@ void print_cluster(struct cluster_t *c)
 int load_clusters(char *filename, struct cluster_t **arr)
 {
     assert(arr != NULL);
+    FILE *fpointer;
+    fpointer = fopen(filename,"r");
+    if(fpointer==NULL)
+    {
+        return -1;
+    }
+    int count = get_count(fpointer);
+    //printf("%d",count);
 
-    // TODO
+    char line[150];
+    int index = 0;
+    
+    for(int i=0;i<count;i++)
+    {
+        fgets(line,150,fpointer);
+        
+        int id = get_section(&index, line);
+        index++;
+        int x = get_section(&index, line);
+        index++;
+        int y = get_section(&index, line);
+        printf("%d %d %d\n",id,x,y);        
+        index = 0;
+    }
+
+    // fake
+    return 0;
 }
 
 /*
@@ -267,6 +325,22 @@ int main(int argc, char *argv[])
 {
     struct cluster_t *clusters;
 
-    // TODO
-}
+    if(argv == NULL || argc<1 || argc>2)
+    {
+        printf("invalid argument");
+        return 1;
+    }
 
+    if(argc == 1)
+    {
+        load_clusters("SOUBOR.txt",&clusters);
+ 
+    }
+
+    if(argc == 2)
+    {
+        return 0;
+    }
+
+    return 0;
+}
