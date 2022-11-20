@@ -256,16 +256,48 @@ int get_count(FILE*fpointer)
     return count;
 }
 
-int get_section(int* index,char* line)
+int split(char* line, int* out_id, int* out_x, int* out_y)
 {
-    int i=0;
-    char data[4]={0};
-    while (line[*index] != ' ' && line[*index] != '\n')
+    char id[4] = { 0 };
+    char x[4] = { 0 };
+    char y[4] = { 0 };
+    
+    size_t line_index = 0;
+    size_t section_index = 0;
+    
+    // Get id
+    while(line[line_index] != ' ')
     {
-        data[i++] = line[*index];
-        (*index)++;
+        id[section_index++] = line[line_index];
+        line_index++;
     }
-    return atoi(data);
+    
+    // Skip space
+    line_index++;
+    
+    // Get x
+    section_index = 0;
+    while(line[line_index] != ' ')
+    {
+        x[section_index++] = line[line_index];
+        line_index++;
+    }
+    
+    // Skip space
+    line_index++;
+    
+    // Get y
+    section_index = 0;
+    while(line[line_index] != '\n' && line[line_index] != '\0')
+    {
+        y[section_index++] = line[line_index];
+        line_index++;
+    }
+    
+    // Save results
+    *out_id = atoi(id);
+    *out_x = atoi(x);
+    *out_y = atoi(y);
 }
 
 /*
@@ -288,19 +320,17 @@ int load_clusters(char *filename, struct cluster_t **arr)
     //printf("%d",count);
 
     char line[150];
-    int index = 0;
     
     for(int i=0;i<count;i++)
     {
         fgets(line,150,fpointer);
+
+        int id = 0;
+        int x = 0;
+        int y = 0;
         
-        int id = get_section(&index, line);
-        index++;
-        int x = get_section(&index, line);
-        index++;
-        int y = get_section(&index, line);
-        printf("%d %d %d\n",id,x,y);        
-        index = 0;
+        split(line, &id, &x, &y);
+        printf("%d %d %d\n",id,x,y);
     }
 
     // fake
