@@ -83,9 +83,16 @@ void init_cluster(struct cluster_t *c, int cap)
     assert(c != NULL);
     assert(cap >= 0);
 
-    c->size=0;
-    c->capacity=0;
-    c->obj=NULL;
+    c->size = 0;
+    c->capacity = 0;
+    c->obj = NULL;
+
+    c->obj = malloc(cap * sizeof(struct obj_t));
+    if (c->obj == NULL)
+    {
+        exit(1);
+    }
+    c->capacity = cap;
 }
 
 /*
