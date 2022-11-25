@@ -83,16 +83,13 @@ void init_cluster(struct cluster_t *c, int cap)
     assert(c != NULL);
     assert(cap >= 0);
 
-    c->size = 0;
-    c->capacity = 0;
-    c->obj = NULL;
-
     c->obj = malloc(cap * sizeof(struct obj_t));
     if (c->obj == NULL)
     {
         exit(1);
     }
     c->capacity = cap;
+    c->size = 0;
 }
 
 /*
@@ -265,9 +262,9 @@ int get_count(FILE*fpointer)
 
 int split(char* line, int* out_id, int* out_x, int* out_y)
 {
-    char id[4] = { 0 };
-    char x[4] = { 0 };
-    char y[4] = { 0 };
+    char id[100] = { 0 };
+    char x[100] = { 0 };
+    char y[100] = { 0 };
     
     size_t line_index = 0;
     size_t section_index = 0;
@@ -327,7 +324,7 @@ int load_clusters(char *filename, struct cluster_t **arr)
     //printf("%d",count);
 
     char line[150];
-    
+    *arr = malloc(count*sizeof(struct cluster_t));
     for(int i=0;i<count;i++)
     {
         fgets(line,150,fpointer);
@@ -337,11 +334,22 @@ int load_clusters(char *filename, struct cluster_t **arr)
         int y = 0;
         
         split(line, &id, &x, &y);
-        printf("%d %d %d\n",id,x,y);
+        if( x > 1000 || y >1000)
+        {
+            continue;
+        }
+
+        // printf("%d %d %d\n",id,x,y);
+
+        init_cluster(&((*arr)[i]),1);
+
+        ((*arr)[i]).obj->id = id;
+        ((*arr)[i]).obj->x = x;
+        ((*arr)[i]).obj->y = y;
+        ((*arr)[i]).size = 1;       
     }
 
-    // fake
-    return 0;
+    return count;
 }
 
 /*
@@ -370,7 +378,8 @@ int main(int argc, char *argv[])
 
     if(argc == 1)
     {
-        load_clusters("SOUBOR.txt",&clusters);
+        int count = load_clusters("SOUBOR.txt",&clusters);
+        print_clusters(clusters,count);
  
     }
 
