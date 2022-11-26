@@ -137,7 +137,13 @@ struct cluster_t *resize_cluster(struct cluster_t *c, int new_cap)
  */
 void append_cluster(struct cluster_t *c, struct obj_t obj)
 {
-    // TODO
+    c = resize_cluster(c, c->capacity++);
+
+    (c->obj[c->size]).id = obj.id;
+    (c->obj[c->size]).x = obj.x;
+    (c->obj[c->size]).y = obj.y;
+
+    c->size++;
 }
 
 /*
@@ -155,7 +161,6 @@ void merge_clusters(struct cluster_t *c1, struct cluster_t *c2)
     assert(c1 != NULL);
     assert(c2 != NULL);
 
-    // TODO
 }
 
 /**********************************************************************/
@@ -339,8 +344,6 @@ int load_clusters(char *filename, struct cluster_t **arr)
             continue;
         }
 
-        // printf("%d %d %d\n",id,x,y);
-
         init_cluster(&((*arr)[i]),1);
 
         ((*arr)[i]).obj->id = id;
@@ -379,7 +382,15 @@ int main(int argc, char *argv[])
     if(argc == 1)
     {
         int count = load_clusters("SOUBOR.txt",&clusters);
+
+        // Testing purposes
         print_clusters(clusters,count);
+
+        // Testing purposes
+        struct cluster_t* c = clusters;
+        struct obj_t o = { .id = 9999, .x = 9999, .y = 9999 };
+        append_cluster(c, o);
+        print_clusters(clusters, count);
  
     }
 
