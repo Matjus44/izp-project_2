@@ -137,7 +137,7 @@ struct cluster_t *resize_cluster(struct cluster_t *c, int new_cap)
  */
 void append_cluster(struct cluster_t *c, struct obj_t obj)
 {
-    c = resize_cluster(c, c->capacity++);
+    c = resize_cluster(c, c->capacity + 1);
 
     (c->obj[c->size]).id = obj.id;
     (c->obj[c->size]).x = obj.x;
@@ -161,6 +161,18 @@ void merge_clusters(struct cluster_t *c1, struct cluster_t *c2)
     assert(c1 != NULL);
     assert(c2 != NULL);
 
+    for(size_t i=0;i < c2->size;i++)
+    {
+        struct obj_t obj;
+
+        obj.id = c2->obj[i].id;
+        obj.x = c2->obj[i].x;
+        obj.y = c2->obj[i].y;
+    
+        append_cluster(c1,obj);
+        sort_cluster(c1);
+
+    }
 }
 
 /**********************************************************************/
@@ -176,6 +188,16 @@ int remove_cluster(struct cluster_t *carr, int narr, int idx)
     assert(idx < narr);
     assert(narr > 0);
 
+    struct cluster_t *removing_cluster = &carr[idx];
+    clear_cluster(removing_cluster);
+    int new_narr = narr - 1;
+    free(&(carr[idx]));
+    for(idx + 1 ; idx + 1 <= narr; idx++)
+    {
+        carr[idx] = carr[idx + 1];
+    }
+    carr = realloc(carr ,new_narr*sizeof(struct cluster_t));
+    return new_narr;
     // TODO
 }
 
@@ -187,6 +209,15 @@ float obj_distance(struct obj_t *o1, struct obj_t *o2)
     assert(o1 != NULL);
     assert(o2 != NULL);
 
+    double sub_x = (o1->x)-(o2->x);
+    double sub_y = (o1->y)-(o2->y);
+    float distance1 = (sub_x)*(sub_x)+(sub_y)*(sub_y);
+    if(distance1<0)
+    {
+        distance1 = distance1 * (-1);
+    }
+    float obj_distance = sqrt(distance1);
+    return obj_distance;
     // TODO
 }
 
@@ -200,7 +231,29 @@ float cluster_distance(struct cluster_t *c1, struct cluster_t *c2)
     assert(c2 != NULL);
     assert(c2->size > 0);
 
-    // TODO
+    struct obj_t obj1;
+    struct obj_t obj2;
+    float min = INT_MAX;
+
+    for(int i = 0 ;i < c1->size;i++)
+    {
+        obj1.x = c1->obj[i].x;
+        obj1.y = c1->obj[i].y;
+
+        for(int j = 0;j < c2->size;j++)
+        {
+            obj2.x = c2->obj[j].x;
+            obj2.y = c2->obj[j].y;
+
+            float vzdalenost = obj_distance(&obj1,&obj2);
+
+            if(vzdalenost < min)
+            {
+                min = vzdalenost;
+            }
+        }  
+    }
+    return min;
 }
 
 /*
@@ -213,7 +266,29 @@ void find_neighbours(struct cluster_t *carr, int narr, int *c1, int *c2)
 {
     assert(narr > 0);
 
-    // TODO
+    float distance_C;
+    float min_distance = INT_MAX;
+    int index_c1 = 0;
+    int index_c2 = 0;
+
+    for(size_t j = 0; j < narr;j++)
+    {
+        for(size_t i = j+1; i < narr;i++)
+        {
+            distance_C = cluster_distance(&carr[j],&carr[i]);
+
+            if(distance_C < min_distance)
+            {
+                distance_C = min_distance;
+                index_c1 = j;
+                index_c2 = i;
+            }
+        }
+    }
+    *c1 = index_c1;
+    *c2 = index_c2;
+
+  // TODO
 }
 
 // pomocna funkce pro razeni shluku
@@ -381,17 +456,18 @@ int main(int argc, char *argv[])
 
     if(argc == 1)
     {
-        int count = load_clusters("SOUBOR.txt",&clusters);
+    int count = load_clusters("SOUBOR.txt",&clusters);
 
-        // Testing purposes
-        print_clusters(clusters,count);
+    // Testing purposes
 
-        // Testing purposes
-        struct cluster_t* c = clusters;
-        struct obj_t o = { .id = 9999, .x = 9999, .y = 9999 };
-        append_cluster(c, o);
-        print_clusters(clusters, count);
- 
+    //float min = cluster_distance(&clusters[0],&clusters[1]);
+    //printf("%f",min);
+    //print_clusters(clusters,count);
+
+    // Testing purposes
+
+    
+            
     }
 
     if(argc == 2)
