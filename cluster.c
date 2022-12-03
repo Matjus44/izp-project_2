@@ -9,7 +9,8 @@
 #include <assert.h>
 #include <math.h> // sqrtf
 #include <limits.h> // INT_MAX
-#include<string.h> 
+#include <string.h> 
+#include <stdbool.h>
 
 /*****************************************************************
  * Ladici makra. Vypnout jejich efekt lze definici makra
@@ -89,7 +90,7 @@ void init_cluster(struct cluster_t *c, int cap)
         exit(1);
     }
     c->capacity = cap;
-    c->size = 0;
+    c->size = 1;
 }
 
 /*
@@ -137,13 +138,24 @@ struct cluster_t *resize_cluster(struct cluster_t *c, int new_cap)
  */
 void append_cluster(struct cluster_t *c, struct obj_t obj)
 {
-    c = resize_cluster(c, c->capacity + 1);
+    if((c->capacity)==c->size)
+    {
+        c = resize_cluster(c, sizeof(c->capacity) + CLUSTER_CHUNK);
 
-    (c->obj[c->size]).id = obj.id;
-    (c->obj[c->size]).x = obj.x;
-    (c->obj[c->size]).y = obj.y;
-
-    c->size++;
+        (c->obj[c->size]).id = obj.id;
+        (c->obj[c->size]).x = obj.x;
+        (c->obj[c->size]).y = obj.y;
+        c->capacity = c->capacity + CLUSTER_CHUNK;
+        c->size++;
+    }
+    else if(c->capacity > c->size)
+    {
+        (c->obj[c->size]).id = obj.id;
+        (c->obj[c->size]).x = obj.x;
+        (c->obj[c->size]).y = obj.y;
+        c->size++;
+    }
+    
 }
 
 /*
@@ -161,7 +173,7 @@ void merge_clusters(struct cluster_t *c1, struct cluster_t *c2)
     assert(c1 != NULL);
     assert(c2 != NULL);
 
-    for(size_t i=0;i < c2->size;i++)
+    for(int i=0;i < c2->size;i++)
     {
         struct obj_t obj;
 
@@ -188,15 +200,13 @@ int remove_cluster(struct cluster_t *carr, int narr, int idx)
     assert(idx < narr);
     assert(narr > 0);
 
-    struct cluster_t *removing_cluster = &carr[idx];
+    struct cluster_t *removing_cluster = &(carr[idx]);
     clear_cluster(removing_cluster);
     int new_narr = narr - 1;
-    free(&(carr[idx]));
-    for(idx + 1 ; idx + 1 <= narr; idx++)
+    for(; idx + 1 < narr; idx++)
     {
         carr[idx] = carr[idx + 1];
     }
-    carr = realloc(carr ,new_narr*sizeof(struct cluster_t));
     return new_narr;
     // TODO
 }
@@ -271,15 +281,15 @@ void find_neighbours(struct cluster_t *carr, int narr, int *c1, int *c2)
     int index_c1 = 0;
     int index_c2 = 0;
 
-    for(size_t j = 0; j < narr;j++)
+    for(int j = 0; j < narr;j++)
     {
-        for(size_t i = j+1; i < narr;i++)
+        for(int i = j+1; i < narr;i++)
         {
             distance_C = cluster_distance(&carr[j],&carr[i]);
 
             if(distance_C < min_distance)
             {
-                distance_C = min_distance;
+                min_distance = distance_C;
                 index_c1 = j;
                 index_c2 = i;
             }
@@ -330,17 +340,46 @@ int get_count(FILE*fpointer)
     char first_line[150]={0};
     fgets(first_line,150,fpointer);
 
-    char amount_of_clusters[0]={};
+    char first_line_arr[6]={'c','o','u','n','t','='};
 
-    for(int i=6;i<strlen(first_line);i++)
+    for(int i = 0; i < 6;i++)
     {
-        amount_of_clusters[i - 6]=first_line[i];
-    }     
+        if(first_line[i]!=first_line_arr[i])
+        {
+            return -1;
+        }
+    }
+
+    char amount_of_clusters[50]={0};
+
+    for(size_t i=6;i<strlen(first_line);i++)
+    {
+        amount_of_clusters[i - 6]=first_line[i];  
+    }
+
+    for(size_t j = 0;j < (strlen(amount_of_clusters)-1);j++)
+    {
+        if(amount_of_clusters[j] >'9' || amount_of_clusters[j] < '0')
+        {
+            return -1;
+        }
+    }
+
     int count = atoi(amount_of_clusters);
+
     return count;
 }
 
-int split(char* line, int* out_id, int* out_x, int* out_y)
+bool is_char_valid(char c)
+{
+    if(c < '0' || c > '9')
+    {
+        return false;
+    }
+    return true;
+}
+
+float split(char* line, int* out_id, float* out_x, float* out_y)
 {
     char id[100] = { 0 };
     char x[100] = { 0 };
@@ -353,6 +392,12 @@ int split(char* line, int* out_id, int* out_x, int* out_y)
     while(line[line_index] != ' ')
     {
         id[section_index++] = line[line_index];
+
+        if(is_char_valid(line[line_index]) == false)
+        {
+            return -1;
+        }
+
         line_index++;
     }
     
@@ -364,6 +409,12 @@ int split(char* line, int* out_id, int* out_x, int* out_y)
     while(line[line_index] != ' ')
     {
         x[section_index++] = line[line_index];
+
+        if(is_char_valid(line[line_index]) == false)
+        {
+            return -1;
+        }
+
         line_index++;
     }
     
@@ -375,13 +426,21 @@ int split(char* line, int* out_id, int* out_x, int* out_y)
     while(line[line_index] != '\n' && line[line_index] != '\0')
     {
         y[section_index++] = line[line_index];
+
+        if(is_char_valid(line[line_index]) == false)
+        {
+            return -1;
+        }
+
         line_index++;
     }
+    
     
     // Save results
     *out_id = atoi(id);
     *out_x = atoi(x);
     *out_y = atoi(y);
+    return 0;
 }
 
 /*
@@ -405,18 +464,23 @@ int load_clusters(char *filename, struct cluster_t **arr)
 
     char line[150];
     *arr = malloc(count*sizeof(struct cluster_t));
+
     for(int i=0;i<count;i++)
     {
         fgets(line,150,fpointer);
-
         int id = 0;
-        int x = 0;
-        int y = 0;
+        float x = 0;
+        float y = 0;
         
         split(line, &id, &x, &y);
-        if( x > 1000 || y >1000)
+        if(split(line, &id, &x, &y) == -1)
         {
-            continue;
+            return -1;
+        }
+
+        if( x < 0 || x > 1000 || y < 0 || y >1000)
+        {
+            return -1;
         }
 
         init_cluster(&((*arr)[i]),1);
@@ -424,9 +488,10 @@ int load_clusters(char *filename, struct cluster_t **arr)
         ((*arr)[i]).obj->id = id;
         ((*arr)[i]).obj->x = x;
         ((*arr)[i]).obj->y = y;
-        ((*arr)[i]).size = 1;       
+        ((*arr)[i]).size = 1;      
     }
 
+    fclose(fpointer);
     return count;
 }
 
@@ -444,36 +509,114 @@ void print_clusters(struct cluster_t *carr, int narr)
     }
 }
 
+bool is_input_valid(char *argument,int count)
+{
+
+    for (size_t i = 0; i < strlen(argument); i++) 
+    {
+        if (argument[i] < '0' || argument[i] > '9')
+        {
+            return false;
+        }
+        if(count < atoi(argument))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 int main(int argc, char *argv[])
 {
     struct cluster_t *clusters;
 
-    if(argv == NULL || argc<1 || argc>2)
+    if(argv == NULL || argc < 2 || argc > 3)
     {
-        printf("invalid argument");
+        printf("invalid argument\n");
         return 1;
-    }
-
-    if(argc == 1)
-    {
-    int count = load_clusters("SOUBOR.txt",&clusters);
-
-    // Testing purposes
-
-    //float min = cluster_distance(&clusters[0],&clusters[1]);
-    //printf("%f",min);
-    //print_clusters(clusters,count);
-
-    // Testing purposes
-
-    
-            
     }
 
     if(argc == 2)
     {
+        char array[7] = {'S','O','U','B','O','R'};
+
+        int count = load_clusters(argv[1],&clusters);
+
+        int index1 = 0;
+        int index2 = 0;
+
+        for(int i = 0; i < 6; i++)
+        {
+            if(argv[1][i] != array[i])
+            {
+                printf("wrong form of argv1\n");
+                return 1;
+            }
+        }
+
+        if(count == -1)
+        {
+            printf("invalid data");
+            return -1;
+        }
+        
+        while(count > 1)
+        {
+            find_neighbours(clusters,count,&index1,&index2);
+            merge_clusters(&clusters[index1],&clusters[index2]);
+            int new_count = remove_cluster(clusters,count,index2);
+            count = new_count;       
+        }
+
+        print_clusters(clusters,count);
+
+        count = remove_cluster(clusters,count,0);
+        free(clusters); 
+        
         return 0;
     }
 
-    return 0;
+    if(argc == 3)
+    {
+        char *input = argv[2];
+        int input_num = atoi(argv[2]);
+
+        int count = load_clusters(argv[1],&clusters);
+
+        int index1 = 0;
+        int index2 = 0;
+
+        if(count == -1)
+        {
+            printf("invalid data\n");
+            return -1;
+        }
+
+        if (is_input_valid(input,count) == false) 
+        {
+            printf("invalid characters in argument or argument is higher than count of clusters\n"); 
+            return 1;
+        }
+
+        while( count > input_num)
+        {
+            find_neighbours(clusters,count,&index1,&index2);
+            merge_clusters(&clusters[index1],&clusters[index2]);
+            int new_count = remove_cluster(clusters,count,index2);
+            count = new_count; 
+        }
+
+        print_clusters(clusters,count);
+
+        for(int i = count-1; i >= 0; i--)
+        {
+            count = remove_cluster(clusters,count,i);
+        }
+        free(clusters);
+        return 0;
+    }
+
+return 0;
+
 }
+
