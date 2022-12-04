@@ -54,6 +54,8 @@
  *      ukazatel na pole shluku.
  */
 
+bool is_error = false;
+
 struct obj_t {
     int id;
     float x;
@@ -140,7 +142,7 @@ void append_cluster(struct cluster_t *c, struct obj_t obj)
 {
     if((c->capacity)==c->size)
     {
-        c = resize_cluster(c, sizeof(c->capacity) + CLUSTER_CHUNK);
+        c = resize_cluster(c,(c->capacity + CLUSTER_CHUNK));
 
         (c->obj[c->size]).id = obj.id;
         (c->obj[c->size]).x = obj.x;
@@ -342,11 +344,15 @@ int get_count(FILE*fpointer)
 
     char first_line_arr[6]={'c','o','u','n','t','='};
 
+    
+
     for(int i = 0; i < 6;i++)
     {
         if(first_line[i]!=first_line_arr[i])
         {
-            return -1;
+            is_error = true;
+            int count = 0;
+            return count;
         }
     }
 
@@ -357,15 +363,16 @@ int get_count(FILE*fpointer)
         amount_of_clusters[i - 6]=first_line[i];  
     }
 
+    int count = atoi(amount_of_clusters);
+
     for(size_t j = 0;j < (strlen(amount_of_clusters)-1);j++)
     {
         if(amount_of_clusters[j] >'9' || amount_of_clusters[j] < '0')
         {
-            return -1;
+            is_error = true;
+            return count;
         }
     }
-
-    int count = atoi(amount_of_clusters);
 
     return count;
 }
@@ -443,6 +450,7 @@ float split(char* line, int* out_id, float* out_x, float* out_y)
     return 0;
 }
 
+
 /*
  Ze souboru 'filename' nacte objekty. Pro kazdy objekt vytvori shluk a ulozi
  jej do pole shluku. Alokuje prostor pro pole vsech shluku a ukazatel na prvni
@@ -475,15 +483,19 @@ int load_clusters(char *filename, struct cluster_t **arr)
         split(line, &id, &x, &y);
         if(split(line, &id, &x, &y) == -1)
         {
-            return -1;
+            is_error = true;
+            fclose(fpointer);
+            return count;
         }
 
         if( x < 0 || x > 1000 || y < 0 || y >1000)
         {
-            return -1;
+            is_error = true;
+            fclose(fpointer);
+            return count;
         }
 
-        init_cluster(&((*arr)[i]),1);
+        init_cluster(&((*arr)[i]),CLUSTER_CHUNK);
 
         ((*arr)[i]).obj->id = id;
         ((*arr)[i]).obj->x = x;
@@ -509,20 +521,40 @@ void print_clusters(struct cluster_t *carr, int narr)
     }
 }
 
-bool is_input_valid(char *argument,int count)
+bool is_argv2_valid(char *argument_2)
 {
 
-    for (size_t i = 0; i < strlen(argument); i++) 
+    for (size_t i = 0; i < strlen(argument_2); i++) 
     {
-        if (argument[i] < '0' || argument[i] > '9')
+        if (argument_2[i] < '0' || argument_2[i] > '9')
         {
             return false;
         }
-        if(count < atoi(argument))
+        if(atoi(argument_2) == 0)
         {
             return false;
         }
     }
+    return true;
+}
+
+bool is_argv1_valid(char *argument_1)
+{
+    char array[7] = {'S','O','U','B','O','R'};
+
+    if(strlen(argument_1) > strlen(array) || strlen(argument_1) < strlen(array))
+    {
+        return false;
+    }
+
+    for(int i = 0; i < 7; i++)
+    {
+        if(argument_1[i] != array[i])
+        {
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -538,41 +570,38 @@ int main(int argc, char *argv[])
 
     if(argc == 2)
     {
-        char array[7] = {'S','O','U','B','O','R'};
+        if(is_argv1_valid(argv[1]) == false)
+        {
+            printf("wrong form of argv[1]\n");
+            return 1;
+        }
 
         int count = load_clusters(argv[1],&clusters);
 
         int index1 = 0;
         int index2 = 0;
 
-        for(int i = 0; i < 6; i++)
+        if(is_error == true)
         {
-            if(argv[1][i] != array[i])
+            for(int i = count-1; i >= 0; i--)
             {
-                printf("wrong form of argv1\n");
-                return 1;
+                count = remove_cluster(clusters,count,i);
             }
-        }
-
-        if(count == -1)
-        {
-            printf("invalid data");
+            printf("invalid data\n");
+            free(clusters);
             return -1;
         }
         
-        while(count > 1)
+        while(count != 1)
         {
             find_neighbours(clusters,count,&index1,&index2);
             merge_clusters(&clusters[index1],&clusters[index2]);
-            int new_count = remove_cluster(clusters,count,index2);
-            count = new_count;       
+            count = remove_cluster(clusters,count,index2);     
         }
 
         print_clusters(clusters,count);
-
         count = remove_cluster(clusters,count,0);
-        free(clusters); 
-        
+        free(clusters);
         return 0;
     }
 
@@ -581,29 +610,52 @@ int main(int argc, char *argv[])
         char *input = argv[2];
         int input_num = atoi(argv[2]);
 
+        if(is_argv1_valid(argv[1]) == false)
+        {
+            printf("wrong form of argv[1]\n");
+            return 1;
+        }
+
+        //checking if input has valid characters.
+        if (is_argv2_valid(input) == false) 
+        {
+            printf("invalid argument of argv[2]\n"); 
+            return 1;
+        }
+
         int count = load_clusters(argv[1],&clusters);
 
         int index1 = 0;
         int index2 = 0;
 
-        if(count == -1)
+        if(is_error == true)
         {
+            for(int i = count-1; i >= 0; i--)
+            {
+                count = remove_cluster(clusters,count,i);
+            }
+            free(clusters);
             printf("invalid data\n");
             return -1;
         }
 
-        if (is_input_valid(input,count) == false) 
+        if(input_num > count)
         {
-            printf("invalid characters in argument or argument is higher than count of clusters\n"); 
+            for(int i = count-1; i >= 0; i--)
+            {
+                count = remove_cluster(clusters,count,i);
+            }
+            free(clusters);
+            printf("invalid argument of argv[2]\n");
             return 1;
         }
 
-        while( count > input_num)
+        while(count > input_num)
         {
             find_neighbours(clusters,count,&index1,&index2);
             merge_clusters(&clusters[index1],&clusters[index2]);
             int new_count = remove_cluster(clusters,count,index2);
-            count = new_count; 
+            count = new_count;
         }
 
         print_clusters(clusters,count);
@@ -612,6 +664,7 @@ int main(int argc, char *argv[])
         {
             count = remove_cluster(clusters,count,i);
         }
+
         free(clusters);
         return 0;
     }
