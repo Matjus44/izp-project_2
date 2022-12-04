@@ -87,10 +87,6 @@ void init_cluster(struct cluster_t *c, int cap)
     assert(cap >= 0);
 
     c->obj = malloc(cap * sizeof(struct obj_t));
-    if (c->obj == NULL)
-    {
-        exit(1);
-    }
     c->capacity = cap;
     c->size = 1;
 }
@@ -337,6 +333,7 @@ void print_cluster(struct cluster_t *c)
     putchar('\n');
 }
 
+// This function takes first line out of file and checks for chars in first line if they make with expecting chars in first line, than it returns count.
 int get_count(FILE*fpointer)
 {
     char first_line[150]={0};
@@ -377,6 +374,7 @@ int get_count(FILE*fpointer)
     return count;
 }
 
+// This function is checking if character is different from numbers.
 bool is_char_valid(char c)
 {
     if(c < '0' || c > '9')
@@ -386,6 +384,7 @@ bool is_char_valid(char c)
     return true;
 }
 
+// This function provides us splitting line in file into 3 different variabiles.
 float split(char* line, int* out_id, float* out_x, float* out_y)
 {
     char id[100] = { 0 };
@@ -475,7 +474,15 @@ int load_clusters(char *filename, struct cluster_t **arr)
 
     for(int i=0;i<count;i++)
     {
+        if(feof(fpointer) != 0)
+        {
+            is_error = true;
+            fclose(fpointer);
+            return count;
+        }
+
         fgets(line,150,fpointer);
+
         int id = 0;
         float x = 0;
         float y = 0;
@@ -521,6 +528,7 @@ void print_clusters(struct cluster_t *carr, int narr)
     }
 }
 
+// In this function we loop through argument and we check each charr if it is different from number or different from number one.
 bool is_argv2_valid(char *argument_2)
 {
 
@@ -538,6 +546,7 @@ bool is_argv2_valid(char *argument_2)
     return true;
 }
 
+// In this function I loop through argument and check if argv[1] matches with expected input as well as lenght of argument.
 bool is_argv1_valid(char *argument_1)
 {
     char array[7] = {'S','O','U','B','O','R'};
@@ -558,10 +567,13 @@ bool is_argv1_valid(char *argument_1)
     return true;
 }
 
+
+
 int main(int argc, char *argv[])
 {
     struct cluster_t *clusters;
 
+    // Checking if argv is different from null or if there is more arguments than 3 or less than 2.
     if(argv == NULL || argc < 2 || argc > 3)
     {
         printf("invalid argument\n");
@@ -570,6 +582,7 @@ int main(int argc, char *argv[])
 
     if(argc == 2)
     {
+        // Checking if argv[1] is valid.
         if(is_argv1_valid(argv[1]) == false)
         {
             printf("wrong form of argv[1]\n");
@@ -581,6 +594,7 @@ int main(int argc, char *argv[])
         int index1 = 0;
         int index2 = 0;
 
+        // If in function load cluster appeared some error, than we free all allocated memory.
         if(is_error == true)
         {
             for(int i = count-1; i >= 0; i--)
@@ -592,6 +606,7 @@ int main(int argc, char *argv[])
             return -1;
         }
         
+        // Merging clusters till count is equal 1.
         while(count != 1)
         {
             find_neighbours(clusters,count,&index1,&index2);
@@ -600,6 +615,8 @@ int main(int argc, char *argv[])
         }
 
         print_clusters(clusters,count);
+
+        // Removing the last cluster.
         count = remove_cluster(clusters,count,0);
         free(clusters);
         return 0;
@@ -610,13 +627,14 @@ int main(int argc, char *argv[])
         char *input = argv[2];
         int input_num = atoi(argv[2]);
 
+        //checking if argv[1] is valid.
         if(is_argv1_valid(argv[1]) == false)
         {
             printf("wrong form of argv[1]\n");
             return 1;
         }
 
-        //checking if input has valid characters.
+        //checking if argv[2] has valid characters.
         if (is_argv2_valid(input) == false) 
         {
             printf("invalid argument of argv[2]\n"); 
@@ -628,28 +646,33 @@ int main(int argc, char *argv[])
         int index1 = 0;
         int index2 = 0;
 
+        //if in function load clusters appeared some error, we clear all the allocated memory and execute program.
         if(is_error == true)
         {
             for(int i = count-1; i >= 0; i--)
             {
                 count = remove_cluster(clusters,count,i);
             }
+
             free(clusters);
             printf("invalid data\n");
             return -1;
         }
 
+        // Checking if number in arg[2] is smaller than count of clusters in file.
         if(input_num > count)
         {
             for(int i = count-1; i >= 0; i--)
             {
                 count = remove_cluster(clusters,count,i);
             }
+
             free(clusters);
             printf("invalid argument of argv[2]\n");
             return 1;
         }
 
+        // Merging clusters till the count of clusters is greater than argv[2] and also deleting the clusters we had merged.
         while(count > input_num)
         {
             find_neighbours(clusters,count,&index1,&index2);
@@ -660,6 +683,7 @@ int main(int argc, char *argv[])
 
         print_clusters(clusters,count);
 
+        // Deleting merged clusters.
         for(int i = count-1; i >= 0; i--)
         {
             count = remove_cluster(clusters,count,i);
